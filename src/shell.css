@@ -2399,3 +2399,25 @@ html:not(.tab-nav) :is(button,a,div.course-row):focus-visible{outline:none!impor
 /* CCConnect: the course ⋯ is always visible (it used to appear only on hover). */
 .mx .mx-course-more{opacity:1;color:var(--sub)}
 html.touch-screen .mx .mx-course-more{display:grid}
+
+/* CCConnect: Events and Clubs */
+.mx .ccc-list{display:flex;flex-direction:column;gap:12px}
+.mx .ccc-section{margin:8px 2px 0;color:var(--sub);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.mx .ccc-event,.mx .ccc-club{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text)}
+.mx .ccc-date{display:flex;flex:0 0 52px;flex-direction:column;align-items:center;padding:8px 0;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink)}
+.mx .ccc-date span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.mx .ccc-date strong{font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+.mx .ccc-event-body{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+.mx .ccc-event-body h3{margin:0;font-size:17px;line-height:1.3;text-wrap:balance}
+.mx .ccc-tag{align-self:flex-start;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:700}
+.mx .ccc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;color:var(--sub);font-size:13px}
+.mx .ccc-about{margin:4px 0 0;color:var(--text);font-size:14px;line-height:1.45}
+.mx .ccc-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
+.mx .ccc-host{flex:1;min-width:0;color:var(--sub);font-size:13px}
+.mx .ccc-count{color:var(--sub);font-size:13px;font-variant-numeric:tabular-nums}
+.mx .ccc-action{display:inline-flex;flex:0 0 auto;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--accent);border-radius:999px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.mx .ccc-action.on{background:transparent;color:var(--accent-ink)}
+.mx .ccc-chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 4px;scrollbar-width:none}
+.mx .ccc-chips button{flex:0 0 auto;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.mx .ccc-chips button.on{border-color:var(--accent);background:var(--accent);color:#fff}
+@media (max-width:520px){.mx .ccc-club{flex-wrap:wrap}.mx .ccc-club .ccc-event-body{flex:1 1 calc(100% - 62px)}.mx .ccc-club .ccc-action{margin-left:62px}}

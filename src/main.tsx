@@ -4,6 +4,8 @@ import { createPortal, flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import QRCode from "qrcode";
 import { io, Socket } from "socket.io-client";
+import { CAMPUS_CLUBS, CAMPUS_EVENTS, CLUB_CATEGORIES } from "./campus";
+import { CalendarDays, MapPin, UsersRound } from "lucide-react";
 import { BarChart3, Flame, Heart, Reply as ReplyIcon, Share as ShareIcon, SquarePlus, ToggleRight } from "lucide-react";
 import { ArrowRight, Pencil, NotebookPen, BadgeCheck, Ban, Copy, Eye, EyeOff, FileText, Clock, Mail, Menu, Newspaper, Lock, Send, Smile, TriangleAlert, MoreVertical, Bell, BellOff, Hash, Shield, CircleCheck, LogOut, Moon, MoreHorizontal, Palette, Paperclip, Share2, ChevronDown, FolderKanban, Plus, Settings2, ShieldCheck, Trash2, Flag, MicOff, ImageIcon, Link2, X, ChevronLeft, ChevronRight, Compass, Camera, Check, GraduationCap, House, ImagePlus, MessageCircle, Pin, QrCode, Search, SlidersHorizontal, Smartphone, UserRound, Users } from "lucide-react";
 import { currentDeviceToken, enablePush, GoogleAuth, isNativeApp, onPushTap, PhotoPicker, setAppChrome } from "./native";
@@ -1083,7 +1085,7 @@ function App() {
 
   // Bumped to retry the saved-login check while the server can't be reached.
   const [sessionRetry, setSessionRetry] = useState(0);
-  const [tab, setTab] = useState<"social" | "settings" | "alerts" | "rooms" | "browse-courses" | "your-courses" | "profile" | "create" | "post" | "course-group" | "moderation" | "course-home" | "project-room" | "degree-posts" | "app-info" | "general-forum" | "note">(homeTab);
+  const [tab, setTab] = useState<"social" | "settings" | "alerts" | "rooms" | "browse-courses" | "your-courses" | "profile" | "create" | "post" | "course-group" | "moderation" | "course-home" | "project-room" | "degree-posts" | "app-info" | "general-forum" | "note" | "events" | "clubs">(homeTab);
   useEffect(() => { localStorage.removeItem("mixby-guest"); }, []);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -1423,6 +1425,10 @@ function App() {
   useEffect(() => onInstallChange(() => setInstallVersion((value) => value + 1)), []);
   const [savedUsername, setSavedUsername] = useState("");
   const [courseGroups, setCourseGroups] = useState<CourseGroup[]>([]);
+  // CCConnect demo: events you're going to, clubs you've joined and the club filter (kept in memory).
+  const [goingEvents, setGoingEvents] = useState<string[]>(["ev-3"]);
+  const [joinedClubs, setJoinedClubs] = useState<string[]>(["cl-1"]);
+  const [clubCategory, setClubCategory] = useState<(typeof CLUB_CATEGORIES)[number]>("All");
   const [groupsReady, setGroupsReady] = useState(false); // the course list has arrived (from the device or the server)
   const [courseQuery, setCourseQuery] = useState("");
   const [courseCatalog, setCourseCatalog] = useState<CatalogCourse[]>([]);
@@ -6653,6 +6659,65 @@ function App() {
           {noteViewer && createPortal(<div className="mx-photo-view" role="dialog" aria-label="Photo" onClick={() => setNoteViewer(null)}><button type="button" className="mx-photo-view-close" aria-label="Close"><X size={22} /></button><img src={noteViewer} alt="" /></div>, document.body)}
         </section>
       );
+    } else if (tab === "events") {
+      // Events on campus, soonest first, grouped into this week and later. "Going" is kept in memory.
+      const weekAhead = Date.now() + 7 * 86400000;
+      const eventCard = (event: (typeof CAMPUS_EVENTS)[number]) => {
+        const start = new Date(event.startsAt), end = new Date(event.endsAt);
+        const going = goingEvents.includes(event.id);
+        const time = (date: Date) => date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        return (
+          <article className="ccc-event" key={event.id}>
+            <div className="ccc-date" aria-hidden="true"><span>{start.toLocaleDateString(undefined, { month: "short" })}</span><strong>{start.getDate()}</strong></div>
+            <div className="ccc-event-body">
+              <span className="ccc-tag">{event.tag}</span>
+              <h3>{event.title}</h3>
+              <p className="ccc-meta"><Clock size={14} aria-hidden="true" />{start.toLocaleDateString(undefined, { weekday: "short" })}, {time(start)} to {time(end)}</p>
+              <p className="ccc-meta"><MapPin size={14} aria-hidden="true" />{event.place}</p>
+              <p className="ccc-about">{event.about}</p>
+              <div className="ccc-row"><span className="ccc-host">Hosted by {event.host}</span><button type="button" className={going ? "ccc-action on" : "ccc-action"} aria-pressed={going} onClick={() => setGoingEvents((ids) => going ? ids.filter((id) => id !== event.id) : [...ids, event.id])}>{going ? <><Check size={15} />Going</> : "I'm going"}</button><span className="ccc-count">{event.going + (going ? 1 : 0)} going</span></div>
+            </div>
+          </article>
+        );
+      };
+      const soon = CAMPUS_EVENTS.filter((event) => new Date(event.startsAt).getTime() <= weekAhead), later = CAMPUS_EVENTS.filter((event) => new Date(event.startsAt).getTime() > weekAhead);
+      main = (
+        <section className="mx-page">
+          <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Events</h2></header>
+          <div className="mx-page-scroll mx-feed ccc-list">
+            <h3 className="ccc-section">This week</h3>
+            {soon.map(eventCard)}
+            {later.length > 0 && <h3 className="ccc-section">Later</h3>}
+            {later.map(eventCard)}
+          </div>
+        </section>
+      );
+    } else if (tab === "clubs") {
+      // Clubs, filtered by category; joining is kept in memory.
+      const shown = CAMPUS_CLUBS.filter((club) => clubCategory === "All" || club.category === clubCategory).sort((a, b) => Number(joinedClubs.includes(b.id)) - Number(joinedClubs.includes(a.id)) || b.members - a.members);
+      main = (
+        <section className="mx-page">
+          <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Clubs</h2></header>
+          <div className="ccc-chips" role="tablist" aria-label="Club categories">{CLUB_CATEGORIES.map((category) => <button type="button" role="tab" key={category} aria-selected={clubCategory === category} className={clubCategory === category ? "on" : ""} onClick={() => setClubCategory(category)}>{category}</button>)}</div>
+          <div className="mx-page-scroll mx-feed ccc-list">
+            {shown.map((club) => {
+              const joined = joinedClubs.includes(club.id);
+              return (
+                <article className="ccc-club" key={club.id}>
+                  <Avatar name={club.name} seed={club.name} />
+                  <div className="ccc-event-body">
+                    <h3>{club.name}</h3>
+                    <p className="ccc-meta"><span className="ccc-tag">{club.category}</span>{(club.members + (joined ? 1 : 0)).toLocaleString()} members</p>
+                    <p className="ccc-about">{club.about}</p>
+                    <p className="ccc-meta"><CalendarDays size={14} aria-hidden="true" />{club.meets}</p>
+                  </div>
+                  <button type="button" className={joined ? "ccc-action on" : "ccc-action"} aria-pressed={joined} onClick={() => setJoinedClubs((ids) => joined ? ids.filter((id) => id !== club.id) : [...ids, club.id])}>{joined ? <><Check size={15} />Joined</> : "Join"}</button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      );
     } else if (tab === "general-forum") {
       // General Forum: general posts (no course). Visitors also see every course's forum posts, each tagged with its
       // course (tap it to open the course), so CCConnect doesn't look empty.
@@ -7073,6 +7138,8 @@ function App() {
           )}
           <label className="mx-search mx-tree-search"><Search size={16} aria-hidden="true" /><input value={chatSearch} onChange={(event) => setChatSearch(event.target.value)} placeholder="Search your courses" /></label>
           <button type="button" className={chatShowing && tab === "general-forum" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenGeneral}><Newspaper size={18} /><span>General Forum</span></button>
+          {!guest && <button type="button" className={chatShowing && tab === "events" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("events"); }}><CalendarDays size={18} /><span>Events</span></button>}
+          {!guest && <button type="button" className={chatShowing && tab === "clubs" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("clubs"); }}><UsersRound size={18} /><span>Clubs</span></button>}
           {DEGREE_FORUM && degree && !guest && <button type="button" className={onDegreePosts ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenDegree}><Newspaper size={18} /><span>Degree Forum</span></button>}
           <div className="mx-section">
             {(() => {
