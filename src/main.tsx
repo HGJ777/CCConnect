@@ -7,6 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { CAMPUS_CLUBS, CAMPUS_EVENTS, CLUB_CATEGORIES } from "./campus";
 import { CalendarDays, MapPin, UsersRound, CodeXml as ClubCode, Globe as ClubGlobe, Trophy as ClubTrophy, PenLine as ClubPen, Briefcase as ClubBriefcase, Film as ClubFilm, Stethoscope as ClubStethoscope, Music as ClubMusic, Mic as ClubMic, Camera as ClubCamera, Sparkles as ClubSparkles, Users as ClubUsers } from "lucide-react";
 import type { ClubIcon } from "./campus";
+import { campusContext, claudeInput, claudeSample, offlineAnswer, type AssistantTurn } from "./assistant";
 // Club artwork for the CCConnect demo: covers and mock photos are drawn from a gradient, a pattern and one of these marks.
 const CLUB_ICONS: Record<ClubIcon, typeof ClubCode> = { code: ClubCode, globe: ClubGlobe, trophy: ClubTrophy, pen: ClubPen, briefcase: ClubBriefcase, film: ClubFilm, stethoscope: ClubStethoscope, music: ClubMusic, mic: ClubMic, camera: ClubCamera, sparkles: ClubSparkles, users: ClubUsers };
 import { BarChart3, Flame, Heart, Reply as ReplyIcon, Share as ShareIcon, SquarePlus, ToggleRight } from "lucide-react";
@@ -1088,7 +1089,7 @@ function App() {
 
   // Bumped to retry the saved-login check while the server can't be reached.
   const [sessionRetry, setSessionRetry] = useState(0);
-  const [tab, setTab] = useState<"social" | "settings" | "alerts" | "rooms" | "browse-courses" | "your-courses" | "profile" | "create" | "post" | "course-group" | "moderation" | "course-home" | "project-room" | "degree-posts" | "app-info" | "general-forum" | "note" | "events" | "clubs">(homeTab);
+  const [tab, setTab] = useState<"social" | "settings" | "alerts" | "rooms" | "browse-courses" | "your-courses" | "profile" | "create" | "post" | "course-group" | "moderation" | "course-home" | "project-room" | "degree-posts" | "app-info" | "general-forum" | "note" | "events" | "clubs" | "assistant">(homeTab);
   useEffect(() => { localStorage.removeItem("mixby-guest"); }, []);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -1436,6 +1437,11 @@ function App() {
     { mine: false, body: "Absolutely, everyone's welcome. Bring your laptop and any questions from lab 4!", at: new Date(Date.now() - 25 * 3600000).toISOString() },
   ] }));
   const [clubView, setClubView] = useState<string | null>(null);
+  // CCConnect assistant chat: the turns, the draft, whether an answer is coming, and where answers come from.
+  const [aiTurns, setAiTurns] = useState<AssistantTurn[]>([]);
+  const [aiDraft, setAiDraft] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiSource, setAiSource] = useState<"claude" | "demo" | null>(null);
   const [clubDraft, setClubDraft] = useState("");
   const [clubCategory, setClubCategory] = useState<(typeof CLUB_CATEGORIES)[number]>("All");
   const [groupsReady, setGroupsReady] = useState(false); // the course list has arrived (from the device or the server)
@@ -6668,6 +6674,47 @@ function App() {
           {noteViewer && createPortal(<div className="mx-photo-view" role="dialog" aria-label="Photo" onClick={() => setNoteViewer(null)}><button type="button" className="mx-photo-view-close" aria-label="Close"><X size={22} /></button><img src={noteViewer} alt="" /></div>, document.body)}
         </section>
       );
+    } else if (tab === "assistant") {
+      // Campus assistant: Claude on the viewer's own account inside a Claude viewer, the demo's answers elsewhere.
+      const ask = async (question: string) => {
+        const text = question.trim();
+        if (!text || aiBusy) return;
+        const turns = [...aiTurns, { mine: true, text }];
+        const showAnswer = (answer: string) => setAiTurns([...turns, { mine: false, text: answer }]);
+        setAiDraft("");
+        setAiBusy(true);
+        showAnswer("");
+        const courses = courseGroups.filter((group) => !group.isDegree).map((group) => group.courseCode);
+        const fromDemo = () => { setAiSource("demo"); window.setTimeout(() => showAnswer(offlineAnswer(text, courses)), 450); };
+        try {
+          const sample = await claudeSample();
+          if (!sample) { fromDemo(); return; }
+          const context = campusContext(courses, (generalPosts || []).map((post) => post.body.split("\n\n")[0]));
+          const { text: answer } = await sample(claudeInput(turns, context), { modelTier: "quick", cache: false, onText: ({ text: soFar }: { text: string }) => showAnswer(soFar) });
+          setAiSource("claude");
+          showAnswer(answer.trim() || offlineAnswer(text, courses));
+        } catch {
+          fromDemo();
+        } finally {
+          window.setTimeout(() => setAiBusy(false), 460);
+        }
+      };
+      const suggestions = ["What's happening this week?", "Which clubs are good for careers?", "Where can I get help for my midterm?"];
+      main = (
+        <section className="mx-page ccc-chat-page ccc-ai">
+          <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Ask AI</h2>{aiTurns.length > 0 && <div className="mx-page-actions"><button type="button" className="ccc-ai-clear" onClick={() => { setAiTurns([]); setAiSource(null); }}>New chat</button></div>}</header>
+          <div className="mx-page-scroll ccc-thread">
+            <div className="ccc-thread-intro"><div className="ccc-ai-mark" aria-hidden="true"><ClubSparkles size={28} /></div><strong>CCConnect assistant</strong><span>Ask about events, clubs and your courses.</span></div>
+            {aiTurns.length === 0 && <div className="ccc-ai-suggest">{suggestions.map((item) => <button type="button" key={item} onClick={() => ask(item)}>{item}</button>)}</div>}
+            {aiTurns.map((turn, index) => <div className={turn.mine ? "ccc-bubble mine" : "ccc-bubble"} key={index}><p>{turn.text || "Thinking…"}</p></div>)}
+            {aiSource && <p className="ccc-ai-source">{aiSource === "claude" ? "Answers by Claude, using your Claude account." : "Demo answers. Open this page signed in to Claude for real AI answers."}</p>}
+          </div>
+          <form className="ccc-compose" onSubmit={(event) => { event.preventDefault(); ask(aiDraft); }}>
+            <input id="ai-message" aria-label="Ask the CCConnect assistant" placeholder="Ask about events, clubs, courses…" value={aiDraft} onChange={(event) => setAiDraft(event.target.value)} />
+            <button type="submit" aria-label="Send" disabled={!aiDraft.trim() || aiBusy}><Send size={18} /></button>
+          </form>
+        </section>
+      );
     } else if (tab === "events") {
       // Events on campus, soonest first, grouped into this week and later. "Going" is kept in memory.
       const weekAhead = Date.now() + 7 * 86400000;
@@ -7202,6 +7249,7 @@ function App() {
           <button type="button" className={chatShowing && tab === "general-forum" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenGeneral}><Newspaper size={18} /><span>General Forum</span></button>
           {!guest && <button type="button" className={chatShowing && tab === "events" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("events"); }}><CalendarDays size={18} /><span>Events</span></button>}
           {!guest && <button type="button" className={chatShowing && tab === "clubs" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setClubView(null); setTab("clubs"); }}><UsersRound size={18} /><span>Clubs</span></button>}
+          {!guest && <button type="button" className={chatShowing && tab === "assistant" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("assistant"); }}><ClubSparkles size={18} /><span>Ask AI</span></button>}
           {DEGREE_FORUM && degree && !guest && <button type="button" className={onDegreePosts ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenDegree}><Newspaper size={18} /><span>Degree Forum</span></button>}
           <div className="mx-section">
             {(() => {
