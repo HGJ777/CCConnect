@@ -7,7 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { CAMPUS_CLUBS, CAMPUS_EVENTS, CLUB_CATEGORIES } from "./campus";
 import { CalendarDays, MapPin, UsersRound, CodeXml as ClubCode, Globe as ClubGlobe, Trophy as ClubTrophy, PenLine as ClubPen, Briefcase as ClubBriefcase, Film as ClubFilm, Stethoscope as ClubStethoscope, Music as ClubMusic, Mic as ClubMic, Camera as ClubCamera, Sparkles as ClubSparkles, Users as ClubUsers } from "lucide-react";
 import type { ClubIcon } from "./campus";
-import { campusContext, claudeInput, claudeSample, offlineAnswer, type AssistantTurn } from "./assistant";
+import { campusContext, claudeInput, claudeSample, courseTool, loadCatalog, offlineAnswer, type AssistantTurn } from "./assistant";
 // Club artwork for the CCConnect demo: covers and mock photos are drawn from a gradient, a pattern and one of these marks.
 const CLUB_ICONS: Record<ClubIcon, typeof ClubCode> = { code: ClubCode, globe: ClubGlobe, trophy: ClubTrophy, pen: ClubPen, briefcase: ClubBriefcase, film: ClubFilm, stethoscope: ClubStethoscope, music: ClubMusic, mic: ClubMic, camera: ClubCamera, sparkles: ClubSparkles, users: ClubUsers };
 import { BarChart3, Flame, Heart, Reply as ReplyIcon, Share as ShareIcon, SquarePlus, ToggleRight } from "lucide-react";
@@ -6685,21 +6685,22 @@ function App() {
         setAiBusy(true);
         showAnswer("");
         const courses = courseGroups.filter((group) => !group.isDegree).map((group) => group.courseCode);
-        const fromDemo = () => { setAiSource("demo"); window.setTimeout(() => showAnswer(offlineAnswer(text, courses)), 450); };
+        const catalog = await loadCatalog();
+        const fromDemo = () => { setAiSource("demo"); window.setTimeout(() => showAnswer(offlineAnswer(text, courses, catalog)), 450); };
         try {
           const sample = await claudeSample();
           if (!sample) { fromDemo(); return; }
           const context = campusContext(courses, (generalPosts || []).map((post) => post.body.split("\n\n")[0]));
-          const { text: answer } = await sample(claudeInput(turns, context), { modelTier: "quick", cache: false, onText: ({ text: soFar }: { text: string }) => showAnswer(soFar) });
+          const { text: answer } = await sample(claudeInput(turns, context), { modelTier: "quick", cache: false, tools: [courseTool(catalog)], onText: ({ text: soFar }: { text: string }) => showAnswer(soFar) });
           setAiSource("claude");
-          showAnswer(answer.trim() || offlineAnswer(text, courses));
+          showAnswer(answer.trim() || offlineAnswer(text, courses, catalog));
         } catch {
           fromDemo();
         } finally {
           window.setTimeout(() => setAiBusy(false), 460);
         }
       };
-      const suggestions = ["What's happening this week?", "Which clubs are good for careers?", "Where can I get help for my midterm?"];
+      const suggestions = ["What's happening this week?", "What psychology courses are there?", "Which clubs are good for careers?"];
       main = (
         <section className="mx-page ccc-chat-page ccc-ai">
           <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Ask AI</h2>{aiTurns.length > 0 && <div className="mx-page-actions"><button type="button" className="ccc-ai-clear" onClick={() => { setAiTurns([]); setAiSource(null); }}>New chat</button></div>}</header>

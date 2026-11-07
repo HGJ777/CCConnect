@@ -3,6 +3,39 @@
 import { CAMPUS_CLUBS, CAMPUS_EVENTS } from "./campus";
 
 export type AssistantTurn = { mine: boolean; text: string };
+export type CatalogCourse = [code: string, title: string];
+
+// York's course catalogue (public/york-courses.json, 5,184 courses), loaded once when the assistant is first used.
+let catalogPromise: Promise<CatalogCourse[]> | null = null;
+export function loadCatalog(): Promise<CatalogCourse[]> {
+  const get = (url: string) => fetch(url).then((response) => (response.ok ? response.json() : Promise.reject(response.status)));
+  return (catalogPromise ||= get("./york-courses.json").catch(() => get("/york-courses.json")).catch(() => { catalogPromise = null; return []; }));
+}
+
+const level = (code: string) => { const number = Number(code.match(/\d{4}/)?.[0] || 9999); return number >= 5000 ? 10000 + number : number; };
+// Courses whose code or title contains every word of the query ("eecs", "psych 1010", "organic chemistry").
+export function searchCourses(catalog: CatalogCourse[], query: string, limit = 12) {
+  const words = query.toLowerCase().replace(/([a-z])(\d)/g, "$1 $2").split(/[^a-z0-9]+/).filter(Boolean);
+  if (!words.length) return [];
+  return catalog
+    .filter(([code, title]) => { const text = `${code} ${title}`.toLowerCase(); return words.every((word) => text.includes(word)); })
+    // Code matches first, then undergraduate (1000-4000 level) before graduate, lowest level first.
+    .sort((a, b) => Number(!a[0].toLowerCase().startsWith(words[0])) - Number(!b[0].toLowerCase().startsWith(words[0])) || level(a[0]) - level(b[0]) || a[0].localeCompare(b[0]))
+    .slice(0, limit);
+}
+
+// The tool Claude calls to look courses up instead of guessing.
+export function courseTool(catalog: CatalogCourse[]) {
+  return {
+    name: "search_courses",
+    description: "Search the university's full course catalogue (5,184 courses) by course code, subject code (like EECS or PSYC) or words in the course title. Returns up to 12 matches as code and title. Call it for any question about which courses exist or are available.",
+    inputSchema: { type: "object", properties: { query: { type: "string", description: "A subject code, course code or title words, e.g. \"PSYC\", \"EECS 2030\" or \"organic chemistry\"" } }, required: ["query"] },
+    execute: async (input: { query?: string }) => {
+      const found = searchCourses(catalog, String(input?.query || ""));
+      return found.length ? found.map(([code, title]) => `${code}: ${title}`).join("\n") : "No matching courses.";
+    },
+  };
+}
 type Sample = ((input: string | { role: "user" | "assistant"; content: string }[], options?: Record<string, unknown>) => Promise<{ text: string; truncated: boolean }>) | null;
 
 let samplePromise: Promise<Sample> | null = null;
@@ -19,7 +52,8 @@ const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday:
 export function campusContext(courses: string[], forumTitles: string[]) {
   return [
     `Today is ${new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}.`,
-    `The student's courses: ${courses.join(", ") || "none yet"}.`,
+    `The student's own courses on CCConnect: ${courses.join(", ") || "none yet"}. Every course has its own forum on CCConnect, and students add courses with + next to My courses.`,
+    "The full York University course catalogue has 5,184 courses. Use the search_courses tool to look courses up; never invent course codes or titles.",
     "Upcoming campus events:",
     ...CAMPUS_EVENTS.map((event) => `- ${event.title} (${event.tag}), ${when(event.startsAt)} at ${event.place}, hosted by ${event.host}. ${event.about} ${event.going} going.`),
     "Clubs:",
@@ -36,8 +70,16 @@ export function claudeInput(history: AssistantTurn[], context: string) {
 }
 
 // Answers from the demo's data when Claude isn't available.
-export function offlineAnswer(question: string, courses: string[]) {
+const CATALOG_FILLER = new Set(["what", "which", "courses", "course", "classes", "class", "available", "avaliable", "are", "is", "the", "a", "an", "about", "for", "in", "on", "any", "there", "offer", "offered", "list", "show", "me", "i", "can", "take", "do", "you", "have", "with", "of", "to", "some", "good", "find", "search", "york", "level", "all"]);
+export function offlineAnswer(question: string, courses: string[], catalog: CatalogCourse[] = []) {
   const q = question.toLowerCase();
+  if (/course|class|catalog/.test(q) && !/midterm|exam|study|lab|assignment|help/.test(q)) {
+    const topic = q.split(/[^a-z0-9]+/).filter((word) => word && !CATALOG_FILLER.has(word)).join(" ");
+    const found = topic ? searchCourses(catalog, topic, 6) : [];
+    if (found.length) return `Courses matching "${topic}":\n- ${found.map(([code, title]) => `${code}: ${title}`).join("\n- ")}\nAdd one with + next to My courses.`;
+    if (topic) return `I couldn't find a course matching "${topic}". Try a subject code like PSYC or EECS, or words from the title.`;
+    return `York has ${(catalog.length || 5184).toLocaleString()} courses. Ask about a subject, like "psychology courses" or "EECS courses". Your courses here are ${courses.join(", ") || "not set yet"}.`;
+  }
   const soon = [...CAMPUS_EVENTS].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   // The club whose distinctive words (not "society", "club"…) the question mentions most.
   const generic = new Set(["society", "club", "association", "group", "students", "student", "and", "the", "rec"]);
