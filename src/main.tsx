@@ -4944,11 +4944,7 @@ function App() {
             <div className="picker-scroll">
               {creating && (
                 <>
-                  {/* Two kinds of group: private (pick classmates) or a professor group anyone in the course can join. */}
-                  <div className="picker-kinds" role="radiogroup" aria-label="Kind of group">
-                    <button type="button" role="radio" aria-checked={inviteOnly} className={inviteOnly ? "picker-kind active" : "picker-kind"} onClick={() => setInviteOnly(true)}><Lock size={18} /><strong>Private group</strong><small>Only classmates you invite</small></button>
-                    <button type="button" role="radio" aria-checked={!inviteOnly} className={!inviteOnly ? "picker-kind active" : "picker-kind"} onClick={() => setInviteOnly(false)}><GraduationCap size={18} /><strong>Professor group</strong><small>Public: anyone in {groupForPicker?.courseCode || "the course"} can join</small></button>
-                  </div>
+                  {/* CCConnect: private groups only (the professor-group choice is removed). */}
                   {inviteOnly ? <>
                     <h3 className="picker-label">Group name</h3>
                     <div className="picker-card"><input className="picker-name" autoFocus maxLength={60} placeholder="Lab 3 group" value={projectNameDraft} onChange={(event) => setProjectNameDraft(event.target.value)} required /></div>
