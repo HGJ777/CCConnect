@@ -357,7 +357,7 @@ html.native-app .mx.mx-native{bottom:var(--kb,0px);transition-property:bottom;tr
 
 /* Tree: degree photo banner, # general, courses that expand into class-chat / pinned / project rooms */
 .mx .mx-tree{gap:2px;padding:14px 12px 20px;background:var(--tree);border-right:1px solid var(--line)}
-.mx .mx-degree-card.has-photo{position:relative;display:block;height:132px;flex:0 0 132px;margin:0 0 6px;padding:0;border-radius:16px;overflow:hidden;background:#3a4a3c;color:#fff}
+.mx .mx-degree-card.has-photo{position:relative;display:block;height:132px;flex:0 0 132px;margin:0 0 6px;padding:0;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 100% 0%,#ffb36b 0%,transparent 50%),linear-gradient(135deg,#ff7a4d 0%,#e2433f 45%,#8b3dd6 100%);color:#fff}
 .mx .mx-degree-card.has-photo::after{display:none}
 .mx .mx-degree-card.has-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .mx .mx-degree-card.has-photo .mx-degree-open{position:relative;z-index:1;height:100%;min-height:0;justify-content:flex-end;padding:14px 44px 14px 16px;color:#fff}

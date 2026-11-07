@@ -7064,12 +7064,10 @@ function App() {
             // Everyone sees a welcome card here (owner's call, Oct 28 2026; no degree / "Pick your program" card).
             // Visitors: tap it to sign up. Students: it opens the General Forum.
             <div className="mx-degree-card has-photo">
-              <img src="/campus.svg" alt="" />
               <button type="button" className="mx-degree-open" onClick={() => { if (guest) leaveGuest("auth"); else shellOpenGeneral(); }}><strong>Welcome to CCConnect!</strong><span>{guest ? "York University · Sign up to post" : "York University"}</span></button>
             </div>
           ) : degree ? (
             <div className="mx-degree-card has-photo">
-              <img src="/campus.svg" alt="" />
               <button type="button" className="mx-degree-open" onClick={shellOpenDegree}><strong>{degree.name}</strong><span>{degree.credentials || degree.code} · {degree.memberCount.toLocaleString()} student{degree.memberCount === 1 ? "" : "s"}</span></button>
               <button type="button" className="mx-degree-more" aria-label="Degree info" onClick={openDegreeInfo}><MoreVertical size={18} /></button>
             </div>
