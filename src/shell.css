@@ -2466,3 +2466,6 @@ html.touch-screen .mx .mx-course-more{display:grid}
 .mx .ccc-compose input{flex:1;min-width:0;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);font:inherit;font-size:16px}
 .mx .ccc-compose button{display:grid;flex:0 0 42px;height:42px;place-items:center;padding:0;border:0;border-radius:999px;background:var(--accent);color:#fff;cursor:pointer}
 .mx .ccc-compose button:disabled{opacity:.4;cursor:default}
+/* Club category buttons centred above the cards (auto margins keep them scrollable on phones). */
+.mx .ccc-chips>:first-child{margin-left:auto}
+.mx .ccc-chips>:last-child{margin-right:auto}
