@@ -1430,7 +1430,13 @@ function App() {
   const [courseGroups, setCourseGroups] = useState<CourseGroup[]>([]);
   // CCConnect demo: events you're going to, clubs you've joined and the club filter (kept in memory).
   const [goingEvents, setGoingEvents] = useState<string[]>(["ev-3"]);
-  const [joinedClubs, setJoinedClubs] = useState<string[]>(["cl-1"]);
+  // Club chats: what you've said to each club and its replies. clubView: the clubs list, the chat list ("inbox") or one club's chat.
+  const [clubChats, setClubChats] = useState<Record<string, { mine: boolean; body: string; at: string }[]>>(() => ({ "cl-1": [
+    { mine: true, body: "Hi! Is the study night open to first-years?", at: new Date(Date.now() - 26 * 3600000).toISOString() },
+    { mine: false, body: "Absolutely, everyone's welcome. Bring your laptop and any questions from lab 4!", at: new Date(Date.now() - 25 * 3600000).toISOString() },
+  ] }));
+  const [clubView, setClubView] = useState<string | null>(null);
+  const [clubDraft, setClubDraft] = useState("");
   const [clubCategory, setClubCategory] = useState<(typeof CLUB_CATEGORIES)[number]>("All");
   const [groupsReady, setGroupsReady] = useState(false); // the course list has arrived (from the device or the server)
   const [courseQuery, setCourseQuery] = useState("");
@@ -6696,42 +6702,84 @@ function App() {
         </section>
       );
     } else if (tab === "clubs") {
-      // Clubs, filtered by category; joining is kept in memory.
-      const shown = CAMPUS_CLUBS.filter((club) => clubCategory === "All" || club.category === clubCategory).sort((a, b) => Number(joinedClubs.includes(b.id)) - Number(joinedClubs.includes(a.id)) || b.members - a.members);
-      main = (
-        <section className="mx-page">
-          <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Clubs</h2></header>
-          <div className="ccc-chips" role="tablist" aria-label="Club categories">{CLUB_CATEGORIES.map((category) => <button type="button" role="tab" key={category} aria-selected={clubCategory === category} className={clubCategory === category ? "on" : ""} onClick={() => setClubCategory(category)}>{category}</button>)}</div>
-          <div className="mx-page-scroll mx-feed ccc-list">
-            <div className="ccc-club-grid">
-            {shown.map((club) => {
-              const joined = joinedClubs.includes(club.id);
-              const Mark = CLUB_ICONS[club.icon];
-              const initials = club.name.split(/\s+/).filter((word) => /^[A-Z]/.test(word)).slice(0, 2).map((word) => word[0]).join("");
-              const cover = { "--c1": club.colors[0], "--c2": club.colors[1] } as CSSProperties;
-              const friends = joined ? ["Jordan Lee", ...club.friends] : club.friends;
-              return (
-                <article className="ccc-club" key={club.id} style={cover}>
-                  <div className="ccc-cover" aria-hidden="true"><span className="ccc-cover-tag">{club.category}</span><Mark className="ccc-cover-mark" size={96} strokeWidth={1.4} /></div>
-                  <div className="ccc-club-main">
-                    <div className="ccc-logo" aria-hidden="true">{initials}</div>
-                    <div className="ccc-club-head">
-                      <h3>{club.name}</h3>
-                      <p className="ccc-meta">{(club.members + (joined ? 1 : 0)).toLocaleString()} members</p>
-                    </div>
-                    <button type="button" className={joined ? "ccc-action on" : "ccc-action"} aria-pressed={joined} onClick={() => setJoinedClubs((ids) => joined ? ids.filter((id) => id !== club.id) : [...ids, club.id])}>{joined ? <><Check size={15} />Joined</> : "Join"}</button>
-                  </div>
-                  <p className="ccc-about">{club.about}</p>
-                  <p className="ccc-meta"><CalendarDays size={14} aria-hidden="true" />{club.meets}</p>
-                  <div className="ccc-photos">{club.photos.map(([caption, icon], index) => { const Photo = CLUB_ICONS[icon]; return <figure className={`ccc-photo ccc-photo-${index}`} key={caption}><Photo size={30} strokeWidth={1.6} aria-hidden="true" /><figcaption>{caption}</figcaption></figure>; })}</div>
-                  <div className="ccc-friends"><span className="ccc-faces">{friends.slice(0, 3).map((name) => <Avatar key={name} name={name} seed={name} />)}</span><span>{friends[0]}{friends.length > 1 ? ` and ${friends.length - 1} classmate${friends.length > 2 ? "s" : ""}` : ""} {friends.length > 1 ? "are" : "is"} in this club</span></div>
-                </article>
-              );
-            })}
+      // Clubs, filtered by category. Message opens a chat with that club; the chat icon lists every club you've messaged.
+      const shown = CAMPUS_CLUBS.filter((club) => clubCategory === "All" || club.category === clubCategory).sort((a, b) => b.members - a.members);
+      const chatted = CAMPUS_CLUBS.filter((club) => clubChats[club.id]?.length).sort((a, b) => (clubChats[b.id].at(-1)?.at || "").localeCompare(clubChats[a.id].at(-1)?.at || ""));
+      const initialsOf = (name: string) => name.split(/\s+/).filter((word) => /^[A-Z]/.test(word)).slice(0, 2).map((word) => word[0]).join("");
+      const coverStyle = (club: (typeof CAMPUS_CLUBS)[number]) => ({ "--c1": club.colors[0], "--c2": club.colors[1] }) as CSSProperties;
+      const openClub = CAMPUS_CLUBS.find((club) => club.id === clubView);
+      const back = <button type="button" className="mx-page-back" aria-label="Back" onClick={() => setClubView(openClub ? "inbox" : null)}><ChevronLeft size={22} /></button>;
+      const timeOf = (iso: string) => { const date = new Date(iso); return Date.now() - date.getTime() < 86400000 ? date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : date.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+      const sendToClub = (club: (typeof CAMPUS_CLUBS)[number]) => {
+        const body = clubDraft.trim();
+        if (!body) return;
+        setClubDraft("");
+        setClubChats((chats) => ({ ...chats, [club.id]: [...(chats[club.id] || []), { mine: true, body, at: new Date().toISOString() }] }));
+        // A club exec answers a moment later (demo).
+        const replies = [`Thanks for reaching out! Our next meetup is ${club.meets.split("·")[0].trim()}. Come by any time.`, "Great question. One of our execs will follow up here soon.", "Love that! You can also drop by our next event to say hi."];
+        window.setTimeout(() => setClubChats((chats) => ({ ...chats, [club.id]: [...(chats[club.id] || []), { mine: false, body: replies[(chats[club.id] || []).length % replies.length], at: new Date().toISOString() }] })), 1200);
+      };
+      if (openClub) {
+        const thread = clubChats[openClub.id] || [];
+        main = (
+          <section className="mx-page ccc-chat-page" style={coverStyle(openClub)}>
+            <header className="mx-page-header">{back}<h2>{openClub.name}</h2></header>
+            <div className="mx-page-scroll ccc-thread">
+              <div className="ccc-thread-intro"><div className="ccc-logo" aria-hidden="true">{initialsOf(openClub.name)}</div><strong>{openClub.name}</strong><span>{openClub.category} · {openClub.members.toLocaleString()} members</span></div>
+              {thread.length === 0 && <p className="ccc-thread-empty">Say hi or ask {openClub.name} a question. Club execs reply here.</p>}
+              {thread.map((message, index) => <div className={message.mine ? "ccc-bubble mine" : "ccc-bubble"} key={index}><p>{message.body}</p><time>{timeOf(message.at)}</time></div>)}
             </div>
-          </div>
-        </section>
-      );
+            <form className="ccc-compose" onSubmit={(event) => { event.preventDefault(); sendToClub(openClub); }}>
+              <input id="club-message" aria-label={`Message ${openClub.name}`} placeholder={`Message ${openClub.name}`} value={clubDraft} onChange={(event) => setClubDraft(event.target.value)} />
+              <button type="submit" aria-label="Send" disabled={!clubDraft.trim()}><Send size={18} /></button>
+            </form>
+          </section>
+        );
+      } else if (clubView === "inbox") {
+        main = (
+          <section className="mx-page">
+            <header className="mx-page-header">{back}<h2>Club chats</h2></header>
+            <div className="mx-page-scroll mx-feed ccc-list">
+              {chatted.length === 0 ? <div className="mx-chat-empty"><span aria-hidden="true"><MessageCircle size={26} /></span><h3>No club chats yet</h3><p>Tap Message on any club to start one.</p></div> : chatted.map((club) => {
+                const last = clubChats[club.id].at(-1)!;
+                return <button type="button" className="ccc-inbox-row" key={club.id} style={coverStyle(club)} onClick={() => { setClubDraft(""); setClubView(club.id); }}><span className="ccc-logo" aria-hidden="true">{initialsOf(club.name)}</span><span className="ccc-inbox-text"><strong>{club.name}</strong><span>{last.mine ? "You: " : ""}{last.body}</span></span><time>{timeOf(last.at)}</time></button>;
+              })}
+            </div>
+          </section>
+        );
+      } else {
+        main = (
+          <section className="mx-page">
+            <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Clubs</h2><div className="mx-page-actions"><button type="button" className="ccc-inbox-btn" aria-label={`Club chats${chatted.length ? `, ${chatted.length}` : ""}`} title="Club chats" onClick={() => setClubView("inbox")}><MessageCircle size={21} />{chatted.length > 0 && <span className="ccc-badge">{chatted.length}</span>}</button></div></header>
+            <div className="ccc-chips" role="tablist" aria-label="Club categories">{CLUB_CATEGORIES.map((category) => <button type="button" role="tab" key={category} aria-selected={clubCategory === category} className={clubCategory === category ? "on" : ""} onClick={() => setClubCategory(category)}>{category}</button>)}</div>
+            <div className="mx-page-scroll mx-feed ccc-list">
+              <div className="ccc-club-grid">
+              {shown.map((club) => {
+                const Mark = CLUB_ICONS[club.icon];
+                const friends = club.friends;
+                return (
+                  <article className="ccc-club" key={club.id} style={coverStyle(club)}>
+                    <div className="ccc-cover" aria-hidden="true"><span className="ccc-cover-tag">{club.category}</span><Mark className="ccc-cover-mark" size={96} strokeWidth={1.4} /></div>
+                    <div className="ccc-club-main">
+                      <div className="ccc-logo" aria-hidden="true">{initialsOf(club.name)}</div>
+                      <div className="ccc-club-head">
+                        <h3>{club.name}</h3>
+                        <p className="ccc-meta">{club.members.toLocaleString()} members</p>
+                      </div>
+                      <button type="button" className="ccc-action" onClick={() => { setClubDraft(""); setClubView(club.id); }}><MessageCircle size={15} />Message</button>
+                    </div>
+                    <p className="ccc-about">{club.about}</p>
+                    <p className="ccc-meta"><CalendarDays size={14} aria-hidden="true" />{club.meets}</p>
+                    <div className="ccc-photos">{club.photos.map(([caption, icon], index) => { const Photo = CLUB_ICONS[icon]; return <figure className={`ccc-photo ccc-photo-${index}`} key={caption}><Photo size={30} strokeWidth={1.6} aria-hidden="true" /><figcaption>{caption}</figcaption></figure>; })}</div>
+                    <div className="ccc-friends"><span className="ccc-faces">{friends.slice(0, 3).map((name) => <Avatar key={name} name={name} seed={name} />)}</span><span>{friends[0]}{friends.length > 1 ? ` and ${friends.length - 1} classmate${friends.length > 2 ? "s" : ""}` : ""} {friends.length > 1 ? "are" : "is"} in this club</span></div>
+                  </article>
+                );
+              })}
+              </div>
+            </div>
+          </section>
+        );
+      }
     } else if (tab === "general-forum") {
       // General Forum: general posts (no course). Visitors also see every course's forum posts, each tagged with its
       // course (tap it to open the course), so CCConnect doesn't look empty.
@@ -7153,7 +7201,7 @@ function App() {
           <label className="mx-search mx-tree-search"><Search size={16} aria-hidden="true" /><input value={chatSearch} onChange={(event) => setChatSearch(event.target.value)} placeholder="Search your courses" /></label>
           <button type="button" className={chatShowing && tab === "general-forum" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenGeneral}><Newspaper size={18} /><span>General Forum</span></button>
           {!guest && <button type="button" className={chatShowing && tab === "events" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("events"); }}><CalendarDays size={18} /><span>Events</span></button>}
-          {!guest && <button type="button" className={chatShowing && tab === "clubs" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setTab("clubs"); }}><UsersRound size={18} /><span>Clubs</span></button>}
+          {!guest && <button type="button" className={chatShowing && tab === "clubs" ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={() => { shellOpenGeneral(); setClubView(null); setTab("clubs"); }}><UsersRound size={18} /><span>Clubs</span></button>}
           {DEGREE_FORUM && degree && !guest && <button type="button" className={onDegreePosts ? "mx-channel mx-general active" : "mx-channel mx-general"} onClick={shellOpenDegree}><Newspaper size={18} /><span>Degree Forum</span></button>}
           <div className="mx-section">
             {(() => {

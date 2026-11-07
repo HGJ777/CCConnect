@@ -2442,3 +2442,27 @@ html.touch-screen .mx .mx-course-more{display:grid}
 .mx .ccc-faces{display:flex}
 .mx .ccc-faces>*{margin-left:-6px;box-shadow:0 0 0 2px var(--card)}
 .mx .ccc-faces>*:first-child{margin-left:0}
+
+/* CCConnect club chats */
+.mx .ccc-inbox-btn{position:relative;display:grid;width:40px;height:40px;place-items:center;padding:0;border:0;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);cursor:pointer}
+.mx .ccc-badge{position:absolute;top:-2px;right:-2px;display:grid;min-width:18px;height:18px;place-items:center;padding:0 5px;border:2px solid var(--main);border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+.mx .ccc-inbox-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text);text-align:left;cursor:pointer}
+.mx .ccc-inbox-row .ccc-logo{flex-basis:48px;width:48px;height:48px;border-width:0;font-size:16px}
+.mx .ccc-inbox-text{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+.mx .ccc-inbox-text strong{font-size:15px}
+.mx .ccc-inbox-text span{overflow:hidden;color:var(--sub);font-size:14px;text-overflow:ellipsis;white-space:nowrap}
+.mx .ccc-inbox-row time{flex:0 0 auto;color:var(--sub);font-size:12px}
+.mx .ccc-chat-page{display:flex;flex-direction:column}
+.mx .ccc-thread{display:flex;flex:1;flex-direction:column;gap:8px;padding:16px}
+.mx .ccc-thread-intro{display:flex;flex-direction:column;align-items:center;gap:4px;margin:8px 0 14px;text-align:center}
+.mx .ccc-thread-intro strong{font-size:17px}
+.mx .ccc-thread-intro span{color:var(--sub);font-size:13px}
+.mx .ccc-thread-empty{margin:0;color:var(--sub);font-size:14px;text-align:center}
+.mx .ccc-bubble{display:flex;flex-direction:column;align-self:flex-start;gap:2px;max-width:78%;padding:9px 13px;border-radius:18px 18px 18px 6px;background:var(--card);border:1px solid var(--line)}
+.mx .ccc-bubble.mine{align-self:flex-end;border-color:transparent;border-radius:18px 18px 6px 18px;background:var(--accent);color:#fff}
+.mx .ccc-bubble p{margin:0;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.mx .ccc-bubble time{align-self:flex-end;font-size:11px;opacity:.7}
+.mx .ccc-compose{display:flex;gap:8px;padding:10px 16px calc(12px + var(--safe-b,0px));border-top:1px solid var(--line);background:var(--main)}
+.mx .ccc-compose input{flex:1;min-width:0;height:42px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);font:inherit;font-size:16px}
+.mx .ccc-compose button{display:grid;flex:0 0 42px;height:42px;place-items:center;padding:0;border:0;border-radius:999px;background:var(--accent);color:#fff;cursor:pointer}
+.mx .ccc-compose button:disabled{opacity:.4;cursor:default}
