@@ -110,7 +110,7 @@ const routes: [RegExp, (path: string) => unknown][] = [
   [/^\/api\/social\/posts\?courseGroupId=/, () => ({ posts: courseForumPosts })],
   [/^\/api\/social\/posts\?scope=general/, () => ({ posts: [...generalExtra, ...forumPosts.map((post) => ({ ...post, degreeId: null }))] })],
   [/^\/api\/social\/posts$/, () => ({ posts: [{ ...forumPosts[2], id: "dev-1", degreeId: null, body: "Welcome to CCConnect\n\nFind your classmates, ask your program anything, and team up in project rooms.", author: person("CCConnect") }] })],
-  [/^\/api\/social\/posts\/[^/]+\/comments$/, (path) => ({ comments: commentsByPost.get(path.split("/")[4]) || comments })],
+  [/^\/api\/social\/posts\/[^/]+\/comments$/, (path) => { const id = path.split("/")[4]; return { comments: commentsByPost.get(id) || (id.startsWith("demo-") ? [] : comments) }; }],
   [/^\/api\/notes$/, () => ({ notes: [{ id: "note-eecs", courseGroupId: "grp-eecs", name: "General notes", createdAt: minutesAgo(9000), updatedAt: minutesAgo(40) }] })],
   [/^\/api\/notes\/[^/]+\/entries$/, () => ({ entries: NOTE_ENTRIES })],
   [/^\/api\/notifications$/, () => ({ notifications: location.search.includes("notifs") ? SAMPLE_NOTIFICATIONS : [], unreadCount: 0, setupRequired: false })], // ?notifs fills the list
@@ -138,7 +138,10 @@ function demoWrite(method: string, path: string, rawBody: BodyInit | null | unde
   const commentPath = path.match(/^\/api\/social\/posts\/([^/]+)\/comments$/);
   if (method === "POST" && commentPath) {
     const comment = { id: `demo-comment-${++demoId}`, parentCommentId: body.parentCommentId || null, body: String(body.body || ""), imageUrl: body.imageUrl || null, createdAt: now, authorName: ME, isMine: true };
-    commentsByPost.set(commentPath[1], [...(commentsByPost.get(commentPath[1]) || comments), comment]);
+    commentsByPost.set(commentPath[1], [...(commentsByPost.get(commentPath[1]) || (commentPath[1].startsWith("demo-") ? [] : comments)), comment]);
+    // Keep the post's comment count in step, so the list shows it too.
+    const counted = [...courseForumPosts, ...generalExtra].find((post) => post.id === commentPath[1]) as { commentCount?: number } | undefined;
+    if (counted) counted.commentCount = (counted.commentCount || 0) + 1;
     return { comment };
   }
   const newGroup = path.match(/^\/api\/course-groups\/([^/]+)\/project-rooms$/);
