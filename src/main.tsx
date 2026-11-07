@@ -5073,6 +5073,7 @@ function App() {
           {muted
             ? <button type="button" onClick={() => unmuteChat(targets)}><Bell size={18} /><span className="mx-chat-menu-text">Unmute notifications<small>{until ? `Muted until ${new Date(until).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "Muted until you turn it back on"}</small></span></button>
             : <button type="button" onClick={() => setChatMenu((menu) => menu && { ...menu, muting: true })}><BellOff size={18} />{chatMenu.course ? "Mute course…" : "Mute notifications…"}</button>}
+          {chatMenu.course && chatMenu.group && !guest && <button type="button" onClick={() => { const group = chatMenu.group as CourseGroup; setChatMenu(null); setCourseHome(group); openProjectPicker("create", group); }}><Lock size={18} />Create private group</button>}
           {(chatMenu.course || chatMenu.room) && <button type="button" className="mx-chat-menu-danger" onClick={() => { const menu = chatMenu; setChatMenu(null); if (menu.group) leaveCourseChat(menu.group); else if (menu.room) leaveGroupFromList(menu.room); }}><LogOut size={18} />{chatMenu.course ? "Leave course" : "Leave group"}</button>}
           {chatMenu.course && isAdmin && chatMenu.group && <button type="button" className="mx-chat-menu-danger" onClick={() => { const group = chatMenu.group as CourseGroup; setChatMenu(null); deleteCourseChat(group); }}><Trash2 size={18} />Delete course (moderator)</button>}
         </>);

@@ -15,7 +15,11 @@ const COURSES = [
 const ROOMS = [
   { id: "room-lab", courseGroupId: "grp-eecs", courseCode: "EECS 2030", name: "Lab 4 team", unreadCount: 2 },
   { id: "room-case", courseGroupId: "grp-adms", courseCode: "ADMS 1000", name: "Case study group", unreadCount: 0 },
-].map((room) => ({ ...room, isCreator: true, createdById: "me", lastActivityAt: minutesAgo(30), expiresAt: minutesAgo(-43200), members: [], pendingInvites: [], lastMessage: null }));
+].map((room) => ({ ...room, isCreator: true, createdById: "me", lastActivityAt: minutesAgo(30), expiresAt: minutesAgo(-43200), members: [{ id: "me", name: "Jordan Lee", isCreator: true }, { id: "p-1", name: "Marcus T", isCreator: false }], pendingInvites: [], lastMessage: null }));
+// Classmates in every course (the demo's member list); private groups are made from these.
+const CLASSMATES = ["Priya S", "Marcus T", "Jaylee Park", "Daniel O", "Aisha K", "Sofia R"].map((name, index) => ({ id: `p-${index}`, name }));
+// Group messages, per group; the two sample groups start with a short conversation.
+const roomMessages = new Map<string, Record<string, unknown>[]>();
 
 // Newest first, like the server.
 const CHAT: [string, string, number, { emoji: string; count: number }[]?][] = [
@@ -87,16 +91,20 @@ const routes: [RegExp, (path: string) => unknown][] = [
   [/^\/api\/identity$/, () => ({ profile: { displayName: ME, program: "", studyYear: null, bio: "Second year CS", interests: [], contactLabel: "", contactValue: "" } })],
   [/^\/api\/course-groups$/, () => ({ term: { id: "term", name: "Fall 2026" }, terms: [], classmates: [], degree: DEGREE, groups: COURSES })],
   [/^\/api\/course-groups\/[^/]+\/posts$/, () => ({ posts: coursePosts })],
-  [/^\/api\/course-groups\/[^/]+\/members$/, () => ({ members: ["Priya S", "Marcus T", "Jaylee Park", "Daniel O", "Aisha K", "Sofia R"].map((name, index) => ({ id: `p-${index}`, name })) })],
+  [/^\/api\/course-groups\/[^/]+\/members$/, () => ({ members: CLASSMATES })],
   [/^\/api\/course-groups\/[^/]+\/project-rooms\/discover$/, () => ({ setupRequired: false, projectRooms: [
     { id: "pub-1", courseGroupId: "grp-eecs", name: "Midterm study group", createdBy: "Marcus T", memberCount: 14, lastActivityAt: minutesAgo(20), expiresAt: minutesAgo(-43200) },
     { id: "pub-2", courseGroupId: "grp-eecs", name: "Lab help (any section)", createdBy: "Priya S", memberCount: 8, lastActivityAt: minutesAgo(300), expiresAt: minutesAgo(-43200) },
   ] })],
-  [/^\/api\/course-groups\/[^/]+\/project-rooms$/, () => ({ projectRooms: [], setupRequired: false })],
-  [/^\/api\/project-rooms\/[^/?]+$/, (path) => ({ projectRoom: { ...(ROOMS.find((room) => path.endsWith(room.id)) || ROOMS[0]), members: [] }, messages: [
-    { id: "pm-1", body: "I'll take the write-up if someone does the diagrams", createdAt: minutesAgo(90), author: person("Marcus T"), mine: false },
-    { id: "pm-2", body: "On it, diagrams by Thursday", createdAt: minutesAgo(60), author: person(ME), mine: true },
-  ] })],
+  [/^\/api\/course-groups\/[^/]+\/project-rooms$/, (path) => ({ projectRooms: ROOMS.filter((room) => room.courseGroupId === path.split("/")[3]), setupRequired: false })],
+  [/^\/api\/project-rooms\/[^/?]+$/, (path) => {
+    const room = ROOMS.find((item) => item.id === path.split("/")[3]) || ROOMS[0];
+    if (!roomMessages.has(room.id)) roomMessages.set(room.id, room.id.startsWith("demo-") ? [] : [
+      { id: `${room.id}-1`, body: "I'll take the write-up if someone does the diagrams", createdAt: minutesAgo(90), mine: false, authorAccountId: "p-1", author: person("Marcus T") },
+      { id: `${room.id}-2`, body: "On it, diagrams by Thursday", createdAt: minutesAgo(60), mine: true, authorAccountId: "me", author: person(ME) },
+    ]);
+    return { projectRoom: room, messages: roomMessages.get(room.id) };
+  }],
   [/^\/api\/chats$/, () => ({ courses: { "grp-eecs": { body: CHAT[0][1], authorName: ME, mine: true, createdAt: minutesAgo(2) } }, projectRooms: ROOMS })],
   [/^\/api\/social\/posts\?degreeId=/, () => ({ posts: forumPosts })],
   [/^\/api\/social\/posts\?courseGroupId=/, () => ({ posts: courseForumPosts })],
@@ -132,6 +140,27 @@ function demoWrite(method: string, path: string, rawBody: BodyInit | null | unde
     const comment = { id: `demo-comment-${++demoId}`, parentCommentId: body.parentCommentId || null, body: String(body.body || ""), imageUrl: body.imageUrl || null, createdAt: now, authorName: ME, isMine: true };
     commentsByPost.set(commentPath[1], [...(commentsByPost.get(commentPath[1]) || comments), comment]);
     return { comment };
+  }
+  const newGroup = path.match(/^\/api\/course-groups\/([^/]+)\/project-rooms$/);
+  if (method === "POST" && newGroup) {
+    const course = COURSES.find((group) => group.id === newGroup[1]);
+    const picked = CLASSMATES.filter((person) => (body.memberIds || []).includes(person.id));
+    const room = { id: `demo-room-${++demoId}`, courseGroupId: newGroup[1], courseCode: course?.courseCode || "", name: String(body.name || "New group"), unreadCount: 0, isCreator: true, createdById: "me", lastActivityAt: now, expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(), members: [{ id: "me", name: ME, isCreator: true }, ...picked.map((person) => ({ ...person, isCreator: false }))], pendingInvites: [], lastMessage: null };
+    ROOMS.push(room as (typeof ROOMS)[number]);
+    roomMessages.set(room.id, []);
+    return { projectRoom: room };
+  }
+  const groupPath = path.match(/^\/api\/project-rooms\/([^/]+)\/(messages|members)$/);
+  if (method === "POST" && groupPath) {
+    const room = ROOMS.find((item) => item.id === groupPath[1]);
+    if (groupPath[2] === "members" && room) {
+      const added = CLASSMATES.filter((person) => (body.memberIds || []).includes(person.id) && !room.members.some((member) => member.id === person.id));
+      room.members.push(...added.map((person) => ({ ...person, isCreator: false })));
+      return { ok: true };
+    }
+    const message = { id: `demo-msg-${++demoId}`, body: String(body.body || ""), attachmentUrl: body.attachmentUrl || null, attachmentName: body.attachmentName || null, isImage: Boolean(body.isImage), createdAt: now, mine: true, authorAccountId: "me", author: person(ME) };
+    roomMessages.set(groupPath[1], [...(roomMessages.get(groupPath[1]) || []), message]);
+    return { message };
   }
   if (method === "POST" && /^\/api\/notes\/[^/]+\/entries$/.test(path)) {
     const entry = { id: `demo-entry-${++demoId}`, body: String(body.body || ""), imageUrl: body.imageUrl || null, createdAt: now };
