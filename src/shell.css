@@ -2403,7 +2403,7 @@ html.touch-screen .mx .mx-course-more{display:grid}
 /* CCConnect: Events and Clubs */
 .mx .ccc-list{display:flex;flex-direction:column;gap:12px}
 .mx .ccc-section{margin:8px 2px 0;color:var(--sub);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.mx .ccc-event,.mx .ccc-club{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text)}
+.mx .ccc-event{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text)}
 .mx .ccc-date{display:flex;flex:0 0 52px;flex-direction:column;align-items:center;padding:8px 0;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink)}
 .mx .ccc-date span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .mx .ccc-date strong{font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
@@ -2420,4 +2420,25 @@ html.touch-screen .mx .mx-course-more{display:grid}
 .mx .ccc-chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 4px;scrollbar-width:none}
 .mx .ccc-chips button{flex:0 0 auto;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
 .mx .ccc-chips button.on{border-color:var(--accent);background:var(--accent);color:#fff}
-@media (max-width:520px){.mx .ccc-club{flex-wrap:wrap}.mx .ccc-club .ccc-event-body{flex:1 1 calc(100% - 62px)}.mx .ccc-club .ccc-action{margin-left:62px}}
+
+/* CCConnect clubs: cover art, logo, mock photo strip and classmates in the club */
+.mx .ccc-club-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.mx .ccc-club{display:flex;flex-direction:column;gap:8px;overflow:hidden;padding:0 0 14px;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--text)}
+.mx .ccc-club>.ccc-about,.mx .ccc-club>.ccc-meta,.mx .ccc-club>.ccc-photos,.mx .ccc-club>.ccc-friends{margin-left:16px;margin-right:16px}
+.mx .ccc-cover{position:relative;height:110px;overflow:hidden;background:radial-gradient(circle at 1px 1px,rgba(255,255,255,.22) 1px,transparent 1.5px) 0 0/14px 14px,linear-gradient(135deg,var(--c1),var(--c2))}
+.mx .ccc-cover-mark{position:absolute;right:-6px;bottom:-14px;color:rgba(255,255,255,.35);transform:rotate(-12deg)}
+.mx .ccc-cover-tag{position:absolute;top:12px;left:12px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.28);color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.mx .ccc-club-main{position:relative;display:flex;align-items:flex-start;gap:12px;margin:-30px 16px 0}
+.mx .ccc-logo{display:grid;flex:0 0 60px;width:60px;height:60px;place-items:center;border:3px solid var(--card);border-radius:16px;background:linear-gradient(135deg,var(--c2),var(--c1));color:#fff;font-size:20px;font-weight:800;letter-spacing:-.02em;position:relative}
+.mx .ccc-club-head{flex:1;min-width:0;padding-top:36px}
+.mx .ccc-club-head h3{margin:0;font-size:17px;line-height:1.25;text-wrap:balance}
+.mx .ccc-club-main .ccc-action{margin-top:38px}
+.mx .ccc-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px}
+.mx .ccc-photo{position:relative;display:grid;margin:0;aspect-ratio:4/3;max-width:100%;place-items:center;overflow:hidden;border-radius:10px;color:rgba(255,255,255,.9);background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.35),transparent 55%),linear-gradient(160deg,var(--c1),var(--c2))}
+.mx .ccc-photo-1{background:radial-gradient(circle at 75% 30%,rgba(255,255,255,.3),transparent 50%),linear-gradient(20deg,var(--c2),var(--c1))}
+.mx .ccc-photo-2{background:radial-gradient(circle at 50% 90%,rgba(0,0,0,.25),transparent 60%),linear-gradient(300deg,var(--c1),var(--c2))}
+.mx .ccc-photo figcaption{position:absolute;inset:auto 0 0;padding:14px 6px 5px;background:linear-gradient(transparent,rgba(0,0,0,.55));color:#fff;font-size:11px;font-weight:600;line-height:1.2;text-align:center}
+.mx .ccc-friends{display:flex;align-items:center;gap:8px;color:var(--sub);font-size:13px}
+.mx .ccc-faces{display:flex}
+.mx .ccc-faces>*{margin-left:-6px;box-shadow:0 0 0 2px var(--card)}
+.mx .ccc-faces>*:first-child{margin-left:0}

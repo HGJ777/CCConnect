@@ -5,7 +5,10 @@ import { createRoot } from "react-dom/client";
 import QRCode from "qrcode";
 import { io, Socket } from "socket.io-client";
 import { CAMPUS_CLUBS, CAMPUS_EVENTS, CLUB_CATEGORIES } from "./campus";
-import { CalendarDays, MapPin, UsersRound } from "lucide-react";
+import { CalendarDays, MapPin, UsersRound, CodeXml as ClubCode, Globe as ClubGlobe, Trophy as ClubTrophy, PenLine as ClubPen, Briefcase as ClubBriefcase, Film as ClubFilm, Stethoscope as ClubStethoscope, Music as ClubMusic, Mic as ClubMic, Camera as ClubCamera, Sparkles as ClubSparkles, Users as ClubUsers } from "lucide-react";
+import type { ClubIcon } from "./campus";
+// Club artwork for the CCConnect demo: covers and mock photos are drawn from a gradient, a pattern and one of these marks.
+const CLUB_ICONS: Record<ClubIcon, typeof ClubCode> = { code: ClubCode, globe: ClubGlobe, trophy: ClubTrophy, pen: ClubPen, briefcase: ClubBriefcase, film: ClubFilm, stethoscope: ClubStethoscope, music: ClubMusic, mic: ClubMic, camera: ClubCamera, sparkles: ClubSparkles, users: ClubUsers };
 import { BarChart3, Flame, Heart, Reply as ReplyIcon, Share as ShareIcon, SquarePlus, ToggleRight } from "lucide-react";
 import { ArrowRight, Pencil, NotebookPen, BadgeCheck, Ban, Copy, Eye, EyeOff, FileText, Clock, Mail, Menu, Newspaper, Lock, Send, Smile, TriangleAlert, MoreVertical, Bell, BellOff, Hash, Shield, CircleCheck, LogOut, Moon, MoreHorizontal, Palette, Paperclip, Share2, ChevronDown, FolderKanban, Plus, Settings2, ShieldCheck, Trash2, Flag, MicOff, ImageIcon, Link2, X, ChevronLeft, ChevronRight, Compass, Camera, Check, GraduationCap, House, ImagePlus, MessageCircle, Pin, QrCode, Search, SlidersHorizontal, Smartphone, UserRound, Users } from "lucide-react";
 import { currentDeviceToken, enablePush, GoogleAuth, isNativeApp, onPushTap, PhotoPicker, setAppChrome } from "./native";
@@ -6700,21 +6703,32 @@ function App() {
           <header className="mx-page-header"><button type="button" className="mx-page-back mx-menu-button" aria-label="Back" onClick={shellBack}><ChevronLeft size={22} /></button><h2>Clubs</h2></header>
           <div className="ccc-chips" role="tablist" aria-label="Club categories">{CLUB_CATEGORIES.map((category) => <button type="button" role="tab" key={category} aria-selected={clubCategory === category} className={clubCategory === category ? "on" : ""} onClick={() => setClubCategory(category)}>{category}</button>)}</div>
           <div className="mx-page-scroll mx-feed ccc-list">
+            <div className="ccc-club-grid">
             {shown.map((club) => {
               const joined = joinedClubs.includes(club.id);
+              const Mark = CLUB_ICONS[club.icon];
+              const initials = club.name.split(/\s+/).filter((word) => /^[A-Z]/.test(word)).slice(0, 2).map((word) => word[0]).join("");
+              const cover = { "--c1": club.colors[0], "--c2": club.colors[1] } as CSSProperties;
+              const friends = joined ? ["Jordan Lee", ...club.friends] : club.friends;
               return (
-                <article className="ccc-club" key={club.id}>
-                  <Avatar name={club.name} seed={club.name} />
-                  <div className="ccc-event-body">
-                    <h3>{club.name}</h3>
-                    <p className="ccc-meta"><span className="ccc-tag">{club.category}</span>{(club.members + (joined ? 1 : 0)).toLocaleString()} members</p>
-                    <p className="ccc-about">{club.about}</p>
-                    <p className="ccc-meta"><CalendarDays size={14} aria-hidden="true" />{club.meets}</p>
+                <article className="ccc-club" key={club.id} style={cover}>
+                  <div className="ccc-cover" aria-hidden="true"><span className="ccc-cover-tag">{club.category}</span><Mark className="ccc-cover-mark" size={96} strokeWidth={1.4} /></div>
+                  <div className="ccc-club-main">
+                    <div className="ccc-logo" aria-hidden="true">{initials}</div>
+                    <div className="ccc-club-head">
+                      <h3>{club.name}</h3>
+                      <p className="ccc-meta">{(club.members + (joined ? 1 : 0)).toLocaleString()} members</p>
+                    </div>
+                    <button type="button" className={joined ? "ccc-action on" : "ccc-action"} aria-pressed={joined} onClick={() => setJoinedClubs((ids) => joined ? ids.filter((id) => id !== club.id) : [...ids, club.id])}>{joined ? <><Check size={15} />Joined</> : "Join"}</button>
                   </div>
-                  <button type="button" className={joined ? "ccc-action on" : "ccc-action"} aria-pressed={joined} onClick={() => setJoinedClubs((ids) => joined ? ids.filter((id) => id !== club.id) : [...ids, club.id])}>{joined ? <><Check size={15} />Joined</> : "Join"}</button>
+                  <p className="ccc-about">{club.about}</p>
+                  <p className="ccc-meta"><CalendarDays size={14} aria-hidden="true" />{club.meets}</p>
+                  <div className="ccc-photos">{club.photos.map(([caption, icon], index) => { const Photo = CLUB_ICONS[icon]; return <figure className={`ccc-photo ccc-photo-${index}`} key={caption}><Photo size={30} strokeWidth={1.6} aria-hidden="true" /><figcaption>{caption}</figcaption></figure>; })}</div>
+                  <div className="ccc-friends"><span className="ccc-faces">{friends.slice(0, 3).map((name) => <Avatar key={name} name={name} seed={name} />)}</span><span>{friends[0]}{friends.length > 1 ? ` and ${friends.length - 1} classmate${friends.length > 2 ? "s" : ""}` : ""} {friends.length > 1 ? "are" : "is"} in this club</span></div>
                 </article>
               );
             })}
+            </div>
           </div>
         </section>
       );
