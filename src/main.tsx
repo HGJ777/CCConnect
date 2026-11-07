@@ -7105,7 +7105,7 @@ function App() {
           <button type="button" className={railPanel === "courses" ? "mx-rail-item active" : "mx-rail-item"} aria-label="Degree" onClick={() => { const wasCourses = railPanel === "courses"; showPanel("courses"); if (isWide() && wasCourses) shellOpenDegree(); }}><GraduationCap size={23} /><span>Degree</span></button>
           {!guest && <button type="button" className={railPanel === "alerts" ? "mx-rail-item active" : "mx-rail-item"} aria-label="Notifications" onClick={() => showPanel("alerts")}><Bell size={23} />{unreadNotifications > 0 && <b>{railBadge}</b>}<span>Alerts</span></button>}
           {guest && <button type="button" className="mx-rail-item" aria-label="Sign up" onClick={() => leaveGuest("auth")}><UserRound size={23} /><span>Sign up</span></button>}
-          {!isNativeApp && !guest && <><span className="mx-rail-spacer" /><button type="button" className={railPanel === "app" ? "mx-rail-app active" : "mx-rail-app"} aria-label="CCConnect App" onClick={() => showPanel("app")}><Smartphone size={20} aria-hidden="true" /><span>CCConnect App</span></button></>}
+          {/* CCConnect: no app page in the rail. */}
         </nav>
         <aside key={railPanel} className="mx-tree" aria-label="Your degree and courses" inert={mobileMain && !isWide()} onTouchStart={forwardStart} onTouchMove={forwardMove} onTouchEnd={forwardEnd} onTouchCancel={forwardEnd}>
           {railPanel === "posts" ? (
