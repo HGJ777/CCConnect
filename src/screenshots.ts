@@ -163,7 +163,16 @@ export function installScreenshotMode() {
     return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
   };
   // The CCConnect demo (`--mode demo`) is clicked through by hand, so it skips the self-running tour.
-  if (import.meta.env.VITE_DEMO !== "true" && !/terms|signup|password|notifs/.test(location.search)) runTour(); // ?terms = Terms update screen, ?signup = new-account screen
+  if (import.meta.env.VITE_DEMO !== "true" && !/terms|signup|password|notifs/.test(location.search)) runTour();
+  // The demo opens on the General Forum (the default page is an old welcome screen).
+  if (import.meta.env.VITE_DEMO === "true") {
+    const started = Date.now();
+    const openForum = () => {
+      const row = [...document.querySelectorAll<HTMLElement>(".mx-tree .mx-channel")].find((item) => item.textContent?.includes("General Forum"));
+      if (row) row.click(); else if (Date.now() - started < 10000) window.setTimeout(openForum, 150);
+    };
+    window.setTimeout(openForum, 150);
+  } // ?terms = Terms update screen, ?signup = new-account screen
 }
 
 // The tour: each screen stays up for SCENE_MS so a script can capture it (scene n starts at about START_MS + n * SCENE_MS).
